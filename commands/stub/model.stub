@@ -1,24 +1,55 @@
 import { client } from "../db/configs/pg.config.js";
 import { Response } from "../helpers/response-data.js";
-import { Pagination } from "../helpers/paginations.js";
+import { query as pagination } from "../helpers/paginations.js";
+import { DEFAULT_IMAGE_SOURCE } from "../helpers/utils/constant.js";
+import { FileCache } from "../helpers/utils/caches/files.js";
+import { paramsToNameFile } from "../helpers/utils/convertion/string.js";
+import { insertData as insetImage } from "./images.js";
 
-const PAGE = new Pagination()
+// Initialize cache with 15 minutes TTL for [name] data
+const cache = new FileCache({
+    cacheDir: '.cache-local/[name]',
+    ttl: 900 // 15 minutes
+});
 
-export const getData = async ( request ) => {
-    const { page, limit, search, sort } = request
+export const getData = async (request) => {
+
+    const { page, limit, search, sort, published, image } = {DEFAULT_IMAGE_SOURCE,...request}
+
+    // option for image
+    const imageOption = new URLSearchParams(image).toString();
+
+    // Create cache key based on request parameters
+    const cacheKey = `[name]_list_${paramsToNameFile(request)}`;
+
+    // Try to get data from cache first
+    const cachedData = await cache.get(cacheKey)
+    if (cachedData) {
+        console.log('Returning cached [name] data')
+        return cachedData
+    }
+
     const count = await client.query(`SELECT count(id) from public.[name]`)
     const total = count.rows[0].count || 0
-    const query = PAGE.query({
-        table: 'public.[name]',
-        selectColumns: ["*"],
-        conditions: {
-            operator: 'WHERE',
-            value: ''
-        },
+
+    const query = pagination({
+        table: 'public.get_[name]',
+        selectColumns: [
+            "id",
+            "name",
+            "description",
+            `concat(image, '?${imageOption}') as image`,
+            "published",
+            "tags",
+            "source",
+            "authors",
+            "languages",
+        ],
+        conditions: { operator: 'WHERE', value: `published = ${published ?? 'true'}` },
         page: page,
         limit: limit,
         search: {
-            column: [],
+            column: ["name", "description"],
             value: search,
             operator: "or",
             withWere: true
@@ -29,14 +60,14 @@ export const getData = async ( request ) => {
         },
     })
 
+
     return await client.query(query, []).then(
-        result => {
-            const data = {
-                data: result.rows,
-                count: total,
-                show: result.rowCount
-            }
-            return data
+        async result => {
+            const responseData = Response.success(result.rows, total)
+            // Cache the successful response
+            await cache.set(cacheKey, responseData)
+            console.log('Cached [name] data')
+            return responseData
         }
     ).catch(
         reason => console.log(reason)
@@ -44,14 +75,22 @@ export const getData = async ( request ) => {
 };
 
 
-export const getDataDetail = async ( { id } ) => {
+export const getDataDetail = async ({ id }) => {
+    const cacheKey = `[name]_detail_${id}`
+    const cachedData = await cache.get(cacheKey)
+    if (cachedData) {
+        console.log(`Returning cached [name] detail for ID: ${id}`)
+        return cachedData
+    }
+
     return await client.query(
         `SELECT * from public.[name] where id=$1`, [id]
     ).then(
         async result => {
-            return Response.success(
-                result.rows
-            );
+            const responseData = Response.detailSuccess(result.rows)
+            await cache.set(cacheKey, responseData)
+            console.log(`Cached [name] detail for ID: ${id}`)
+            return responseData
         }
     ).catch(
         reason => console.log(reason)
@@ -59,49 +98,93 @@ export const getDataDetail = async ( { id } ) => {
 };
 
 
-export const insertData = async ( request ) => {
-    const { name } = request
+export const insertData = async (request) => {
 
-    return await client.query(
-        `INSERT INTO public.[name] ("name") VALUES ($1) RETURNING id;`,
-        [name]
-    ).then(
-        result => {
-            if (result.rowCount < 0)
-                return result
-            return Response.insetSuccess({ message: "Insert Success." })
+    const fileData = {
+        id: (request.file.filename).split('.')[0],
+        filename: request.file.filename,
+        original_name: request.file.originalname,
+        mime_type: request.file.mimetype,
+        size: request.file.size,
+        path: `/images/[name]/${request.file.filename}`
+    }
+
+    request.body.image = request.file.filename;
+
+    const { status } = await insetImage(fileData)
+
+    if (status !== 200) {
+        res.status(status).json(Response.insetFailed({ message: "Failed to insert image data." }));
+    }
+
+    const { image, title, description, published, tags, source, authors, languages } = request.body;
+
+    const query = `
+        INSERT INTO public.[name](
+            name, description, image, published, tags, source, authors, languages
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING id;
+    `;
+
+    const values = [
+        title,
+        description,
+        image,
+        published,
+        tags ? (tags) : null,
+        source ? JSON.stringify(source) : null,
+        authors ? JSON.stringify(authors) : null,
+        languages ? (languages) : null
+    ];
+
+    return await client.query(query, values).then(
+        async result => {
+            if (result.rowCount > 0) {
+                await clear[name]Cache()
+                console.log('Cleared [name] cache due to new [name] creation')
+
+                return Response.insetSuccess({
+                    id: result.rows[0].id,
+                    message: "[name] created successfully.",
+                });
+            }
+            return Response.insetFailed({ message: "Failed to create [name]." });
         }
     ).catch(
         reason => {
-            if (reason.code == "23505")
-                return Response.insetFailed({ message: reason.detail });
-
-            console.log(reason)
-            return reason
+            console.log(reason);
+            return Response.insetFailed({ message: reason.message || "Failed to create [name]." });
         }
-    )
+    );
 };
 
 
-export const updateData = async ( request ) => {
-    return await client.query(
-        `UPDATE public.[name] SET "name"=$1 WHERE id=$2;`,
-        [name, id]
-    ).then(
-        result =>
-        {
-            if (result.rowCount < 0)
-                return result
-            return Response.insetSuccess({ message: "Update Success." })
-        }
-    ).catch(
-        reason =>
-        {
-            if (reason.code == "23505")
-                return Response.insetFailed({ message: reason.detail });
-
-            console.log(reason)
-            return reason
-        }
-    )
+export const updateData = async (request) => {
+    return Response.serverError({
+        message: "Cooking! Coming soon...",
+        data: request.body
+    })
 };
+
+export const clearCache = async () => {
+    try {
+        await cache.clear();
+        console.log('[name] cache cleared successfully');
+        return Response.success(null, 0, "Cache cleared successfully.");
+    } catch (error) {
+        console.error('Error clearing [name] cache:', error);
+        return Response.serverError({ message: "Failed to clear cache." });
+    }
+}
+
+export const getCacheStats = async () => {
+    try {
+        return {
+            cacheDir: cache.cacheDir,
+            ttl: cache.ttl
+        }
+    } catch (error) {
+        console.error('Error getting cache stats:', error)
+        return null
+    }
+}
