@@ -5,7 +5,7 @@
 -- DROP TABLE public.projects;
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
-DROP TABLE IF EXISTS public.projects;
+DROP TABLE IF EXISTS public.projects CASCADE;
 
 CREATE TABLE IF NOT EXISTS public.projects (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

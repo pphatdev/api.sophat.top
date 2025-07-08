@@ -1,4 +1,6 @@
 -- public.get_projects source
+DROP VIEW IF EXISTS public.get_projects CASCADE;
+
 CREATE
 OR REPLACE VIEW public.get_projects AS
 select

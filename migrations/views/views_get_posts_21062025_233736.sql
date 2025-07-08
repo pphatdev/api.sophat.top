@@ -1,4 +1,5 @@
 -- public.get_posts source
+DROP VIEW IF EXISTS public.get_posts CASCADE;
 
 CREATE OR REPLACE VIEW public.get_posts
 AS SELECT p.id,

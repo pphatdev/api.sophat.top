@@ -1,4 +1,5 @@
 -- public.get_ebooks source
+DROP VIEW IF EXISTS public.get_ebooks CASCADE;
 
 CREATE OR REPLACE VIEW public.get_ebooks
 AS SELECT

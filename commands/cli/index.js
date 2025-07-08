@@ -73,9 +73,10 @@ if (commandLength >= 3) {
      * Migrate Table
     */
     if ((options[0]) === '--migrate') {
-        migrate()
-        views()
-        procedures()
+        views()        // Run views first to drop them before tables
+        migrate()      // Then run table migrations
+        views()        // Run views again to recreate them
+        procedures()   // Finally run procedures
 
         new Promise(resolve => setTimeout(resolve, 1000)).then(() => {
             console.log(`✅🌈  Migration completed!\n`)
