@@ -18,12 +18,12 @@ const ROUTE = Router()
 ROUTE.use(`${API}/projects`, PROJECTS)
 
 
-const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
-	standardHeaders: 'draft-7',
-	legacyHeaders: false
-})
+// const limiter = rateLimit({
+//     windowMs: 15 * 60 * 1000,
+//     max: 100,
+// 	standardHeaders: 'draft-7',
+// 	legacyHeaders: false
+// })
 
 /**
  * Define Body Parser
@@ -31,7 +31,7 @@ const limiter = rateLimit({
 ROUTE.use(bodyParser.urlencoded({ extended: true }))
 ROUTE.use(bodyParser.json())
 
-ROUTE.use(limiter);
+// ROUTE.use(limiter);
 
 ROUTE.use(`${API}/auth`, AUTH)
 
