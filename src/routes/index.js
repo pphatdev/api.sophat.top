@@ -9,6 +9,7 @@ import { ROUTE as FILES } from './images.js'
 import { ROUTE as POSTS } from './posts.js'
 import { ROUTE as PROJECTS } from './projects.js'
 import { ROUTE as EBOOKS } from './ebooks.js'
+import { ROUTE as RECOMMENDATIONS } from './recommendations.js'
 
 import { rateLimit } from 'express-rate-limit'
 
@@ -44,5 +45,7 @@ ROUTE.use(`${API}/password`, PASSWORD)
 ROUTE.use(`${API}/posts`, POSTS)
 
 ROUTE.use(`${API}/ebooks`, EBOOKS)
+
+ROUTE.use(`${API}/recommendations`, RECOMMENDATIONS)
 
 export default ROUTE
