@@ -35,7 +35,7 @@ export const getData = async (request) => {
         page: page,
         limit: limit,
         search: {
-            column: ["title", "description", "author"],
+            column: ["title", "description", "subtitle", "author", "publisher", "isbn", "category", "language"],
             value: search,
             operator: "or",
             withWere: true
