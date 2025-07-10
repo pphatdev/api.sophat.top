@@ -11,8 +11,8 @@ const cache = new FileCache({
 });
 
 export const getData = async (request) => {
-    const { page, limit, search, sort } = request
-
+    const { page, limit, search, sort, category } = request
+    let searchCondition = "";
     const cacheKey = `ebooks_list_${paramsToNameFile(request)}`;
 
     // Try to get data from cache first
@@ -22,7 +22,22 @@ export const getData = async (request) => {
         return cachedData
     }
 
-    const count = await client.query(`SELECT count(id) from public.get_ebooks`)
+    if (category && category !== "all") {
+        if (String(category).toLowerCase().includes("recommend")) {
+            searchCondition = `rating >= 4`;
+        } else {
+            searchCondition = `category ilike '%${category}%'`;
+        }
+    }
+
+    if (search && search !== "" && category !== "all") {
+        searchCondition = searchCondition ? `${searchCondition} AND` : '';
+        searchCondition += ` (title ilike '%${search}%' OR subtitle ilike '%${search}%' OR author ilike '%${search}%')`;
+    }
+
+    const count = await client.query(
+        `SELECT count(id) from public.get_ebooks ${searchCondition ? `WHERE ${searchCondition}` : ''}`, []
+    )
     const total = count.rows[0].count || 0
 
     const query = pagination({
@@ -30,18 +45,20 @@ export const getData = async (request) => {
         selectColumns: ["*"],
         conditions: {
             operator: 'WHERE',
-            value: ''
+            value: searchCondition
         },
         page: page,
         limit: limit,
         search: {
-            column: ["title", "description", "subtitle", "author", "publisher", "isbn", "category", "language"],
+            column: ["title", "description", "subtitle", "author"],
             value: search,
             operator: "or",
             withWere: true
         },
         sort: {
-            column: [],
+            column: [
+                "updated_date","title", "subtitle"
+            ],
             value: sort
         },
     })

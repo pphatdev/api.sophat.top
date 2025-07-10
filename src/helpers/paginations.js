@@ -17,7 +17,6 @@ class Pagination {
                 page: PAGE,
                 limit: LIMIT,
                 search: SEARCH,
-                sort: SORT,
             },
             ...params,
         }
@@ -86,8 +85,9 @@ class Pagination {
          * @param {String} sort.column
          * @return {String} `column1, column2`
          */
-        const sorts = Array.from(sort.column || ["id"] ).map(column => column).join(", ")
-
+        const sortColumns = sort.column.length > 0 ? sort.column : ["id"];
+        const sorts = Array.from(sortColumns).map(column => column).join(", ")
+        
         /**
          * Initalize conditions
          * @param {String} conditions.value
@@ -119,15 +119,16 @@ class Pagination {
                 ? `ORDER BY ${sorts} ${sort.value}`
                 : noValue
             }
-            ${typeof limit === 'number' && limit != -1
+            ${typeof limit === 'number' || Number(limit) && limit != -1
                 ? `LIMIT ${limit}`
                 : noValue
             }
-            ${typeof limit === 'number' && page
+            ${typeof limit === 'number' || Number(limit) && page
                 ? `OFFSET ${(page - 1) * limit}`
                 : noValue
             }`
         )
+        
         return query
     }
 }
