@@ -118,4 +118,44 @@ export class Response {
             result: errors
         };
     }
+
+    static updateFailed = (message, ...options) => {
+        return {
+            status: 400,
+            success: false,
+            version: VERSION,
+            result: message,
+            ...options
+        }
+    }
+
+    static updateSuccess = (data, ...options) => {
+        return {
+            status: 200,
+            success: true,
+            version: VERSION,
+            result: data,
+            ...options
+        }
+    }
+
+    static deleteSuccess = (data, ...options) => {
+        return {
+            status: 200,
+            success: true,
+            version: VERSION,
+            result: data,
+            ...options
+        }
+    }
+
+    static deleteFailed = (message, ...options) => {
+        return {
+            status: 400,
+            success: false,
+            version: VERSION,
+            result: message,
+            ...options
+        }
+    }
 }
