@@ -1,8 +1,18 @@
 import multer from 'multer'
 import path from 'path'
+import crypto from 'crypto'
+import fs from 'fs'
 
 const storage = multer.diskStorage({
-    destination: 'public/uploads/images',
+    destination: (req, file, next) => {
+        // Get custom path from request or use default
+        const customPath = req.headers.uploadpath || 'public/uploads/images'
+
+        // Ensure the directory exists
+        fs.mkdirSync(customPath, { recursive: true })
+        
+        next(null, customPath)
+    },
     filename: (req, file, next) => {
         const uniqueId = crypto.randomUUID()
         next(null, uniqueId + path.extname(file.originalname))
