@@ -1,28 +1,16 @@
--- Function to generate book recommendations based on different algorithms
-CREATE OR REPLACE FUNCTION public.get_book_recommendations(
-    user_id_param BIGINT = NULL,
-    recommendation_type_param VARCHAR(50) = 'similar',
-    limit_param INTEGER = 10,
-    category_filter VARCHAR(100) = NULL
-) RETURNS TABLE (
-    id UUID,
-    book_id UUID,
-    title VARCHAR(255),
-    author VARCHAR(255),
-    category VARCHAR(100),
-    rating DECIMAL(3,2),
-    recommendation_score DECIMAL(3,2),
-    reason TEXT,
-    cover_image_url VARCHAR(500),
-    price DECIMAL(10,2)
-) AS $$
+-- DROP FUNCTION public.get_book_recommendations(uuid, varchar, int4, varchar);
+
+CREATE OR REPLACE FUNCTION public.get_book_recommendations(user_id_param uuid DEFAULT NULL::uuid, recommendation_type_param character varying DEFAULT 'similar'::character varying, limit_param integer DEFAULT 10, category_filter character varying DEFAULT NULL::character varying)
+ RETURNS TABLE(id uuid, book_id uuid, title character varying, author character varying, category character varying, rating numeric, recommendation_score numeric, reason text, cover_image_url character varying, price numeric)
+ LANGUAGE plpgsql
+AS $function$
 BEGIN
     CASE recommendation_type_param
         WHEN 'popular' THEN
             -- Return most downloaded books
             RETURN QUERY
             SELECT 
-                gen_random_uuid() as id,
+                e.id,
                 e.id as book_id,
                 e.title,
                 e.author,
@@ -43,7 +31,7 @@ BEGIN
             -- Return recently published books with good ratings
             RETURN QUERY
             SELECT 
-                gen_random_uuid() as id,
+                e.id,
                 e.id as book_id,
                 e.title,
                 e.author,
@@ -51,7 +39,7 @@ BEGIN
                 e.rating,
                 LEAST((e.rating / 5.0) * (1.0 - EXTRACT(DAYS FROM (NOW() - e.created_date))::DECIMAL / 365), 1.0) as recommendation_score,
                 'Trending book with recent publication and good rating' as reason,
-                e.cover_image_url,
+                e.cover_image_url as image,
                 e.price
             FROM public.ebooks e
             WHERE e.status = true 
@@ -74,7 +62,7 @@ BEGIN
                 LIMIT 5
             )
             SELECT 
-                gen_random_uuid() as id,
+                e.id,
                 e.id as book_id,
                 e.title,
                 e.author,
@@ -118,7 +106,7 @@ BEGIN
             -- Default to popular recommendations
             RETURN QUERY
             SELECT 
-                gen_random_uuid() as id,
+                e.id,
                 e.id as book_id,
                 e.title,
                 e.author,
@@ -136,4 +124,5 @@ BEGIN
             LIMIT limit_param;
     END CASE;
 END;
-$$ LANGUAGE plpgsql;
+$function$
+;
