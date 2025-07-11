@@ -16,7 +16,7 @@ AS SELECT
     file_size_mb,
     file_format,
     file_path,
-    concat ('/api/v1/files/images/', cover_image_url) as image,
+    concat ('/api/v1/files/thumbnails/', cover_image_url) as image,
     price,
     publication_date,
     rating,
