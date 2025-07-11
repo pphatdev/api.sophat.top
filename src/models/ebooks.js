@@ -173,3 +173,57 @@ export const updateData = async (request) => {
         }
     );
 };
+
+
+export const getRelatedData = async (request) => {
+    const { page, limit, search, sort, id } = request
+    const cacheKey = `related_ebooks_${id}_${paramsToNameFile(request)}`;
+
+    // Try to get data from cache first
+    const cachedData = await cache.get(cacheKey)
+    if (cachedData) {
+        console.log('Returning cached related ebooks data')
+        return cachedData
+    }
+
+    // Count total related ebooks
+    const count = await client.query(
+        `SELECT count(id) from public.get_related_ebooks WHERE reference_book_id = $1`, [id]
+    )
+    const total = count.rows[0].count || 0 
+
+    const query = pagination({
+        table: 'public.get_related_ebooks',
+        selectColumns: ["*"],
+        conditions: {
+            operator: 'WHERE',
+            value: `reference_book_id = '${id}'`
+        },
+        page: page,
+        limit: limit,
+        search: {
+            column: ["title", "description", "subtitle", "author"],
+            value: search,
+            operator: "or",
+            withWere: false
+        },
+        sort: {
+            column: [
+                "updated_date", "title", "subtitle"
+            ],
+            value: sort
+        },
+    })
+
+    return await client.query(query, []).then(
+        async result => {
+            const responseData = Response.success(result.rows, total)
+            // Cache the successful response
+            await cache.set(cacheKey, responseData)
+            console.log('Cached related ebooks data')
+            return responseData
+        }
+    ).catch(
+        reason => console.log(reason)
+    )
+};

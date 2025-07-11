@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { authenticateToken } from '../middlewares/authenticate.js'
 import { Validation } from '../helpers/validator.js'
-import { getData, getDataDetail, insertData, updateData } from '../models/ebooks.js'
+import { getData, getDataDetail, getRelatedData, insertData, updateData } from '../models/ebooks.js'
 import { uploadSingle } from '../controllers/images.js'
 export const ROUTE = Router()
 
@@ -31,6 +31,14 @@ ROUTE.get("/:id",
     Validation.base.detail,
     async (req, res) => {
         const response = await getDataDetail(req.params)
+        res.send(response)
+    }
+)
+
+ROUTE.get("/related/:id",
+    Validation.base.detail,
+    async (req, res) => {
+        const response = await getRelatedData({ ...req.params, ...req.query })
         res.send(response)
     }
 )
