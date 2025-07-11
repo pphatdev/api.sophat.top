@@ -10,7 +10,7 @@ SELECT
     a.website,
     a.awards,
     a.genres,
-    a.profile_image_url,
+    a.profile_image_url as image,
     a.created_date,
     a.updated_date,
     -- Calculate age if still alive, or age at death
