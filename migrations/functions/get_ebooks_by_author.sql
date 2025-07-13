@@ -60,7 +60,7 @@ BEGIN
         e.updated_date
     FROM public.ebooks e
     LEFT JOIN public.authors a ON a.id = e.author_id
-    WHERE e.is_deleted = false AND e.author_id = 14
+    WHERE e.is_deleted = false AND e.author_id = author_id_param
     GROUP BY
         e.id,
         e.title,
