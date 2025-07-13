@@ -25,7 +25,7 @@ ROUTE.get("/",
 )
 
 ROUTE.get("/:id",
-    Validation.base.detail,
+    Validation.base.id,
     async (req, res) => {
         const response = await getDataDetail(req.params)
         res.send(response)
@@ -35,7 +35,7 @@ ROUTE.get("/:id",
 ROUTE.patch("/:id",
     uploadSingle,
     async (req, res) => {
-        
+
         // validate author_id
         if (!req.params.id || isNaN(req.params.id)) {
             return res.status(400).send({ message: "Invalid author ID." })
