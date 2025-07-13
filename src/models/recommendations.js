@@ -38,12 +38,11 @@ export const getRecommendations = async (request) => {
 
         // Cache the successful response
         await cache.set(cacheKey, responseData);
-        console.log('Cached recommendations data');
 
         return responseData;
     } catch (error) {
         console.error('Error getting recommendations:', error);
-        return Response.errorResponse({ message: 'Failed to get recommendations' });
+        return Response.serverError({ message: 'Failed to get recommendations' });
     }
 };
 
@@ -108,7 +107,7 @@ export const getUserRecommendations = async (request) => {
     const { user_id, limit = 10, category } = request;
 
     if (!user_id) {
-        return Response.errorResponse({ message: "User ID is required" });
+        return Response.notFound({ message: "User ID is required" });
     }
 
     const cacheKey = `user_recommendations_${paramsToNameFile(request)}`;
@@ -135,7 +134,7 @@ export const getUserRecommendations = async (request) => {
         return responseData;
     } catch (error) {
         console.error('Error getting user recommendations:', error);
-        return Response.errorResponse({ message: 'Failed to get user recommendations' });
+        return Response.serverError({ message: 'Failed to get user recommendations' });
     }
 };
 

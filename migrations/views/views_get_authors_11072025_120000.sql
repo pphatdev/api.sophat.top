@@ -26,9 +26,9 @@ SELECT
         WHEN a.death_date IS NULL THEN true
         ELSE false
     END AS is_alive,
-    -- Count of books by this author (if ebooks table exists)
+    -- Count of books by this author
     COALESCE(
-        (SELECT COUNT(*) FROM public.ebooks e WHERE e.author ILIKE '%' || a.name || '%'),
+        (SELECT COUNT(*) FROM public.ebooks e WHERE e.author_id = a.id),
         0
     ) AS books_count
 FROM public.authors a

@@ -3,7 +3,7 @@ CREATE OR REPLACE FUNCTION public.update_ebooks(
     book_id UUID,
     title character varying,
     subtitle character varying,
-    author character varying,
+    author_id integer,
     publisher character varying,
     isbn character varying,
     description text,
@@ -22,7 +22,7 @@ BEGIN
     UPDATE public.ebooks SET
         title = update_ebooks.title,
         subtitle = update_ebooks.subtitle,
-        author = update_ebooks.author,
+        author_id = update_ebooks.author_id,
         publisher = update_ebooks.publisher,
         isbn = update_ebooks.isbn,
         description = update_ebooks.description,

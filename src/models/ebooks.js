@@ -86,7 +86,7 @@ export const getDataDetail = async ({ id }) => {
     }
 
     return await client.query(
-        `SELECT * from public.ebooks where id=$1`, [id]
+        `SELECT * from public.get_ebooks where id=$1`, [id]
     ).then(
         async result => {
             const responseData = Response.detailSuccess(result.rows)

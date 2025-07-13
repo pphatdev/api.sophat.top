@@ -1,7 +1,7 @@
 CREATE OR REPLACE FUNCTION public.insert_ebooks(
     title character varying,
     subtitle character varying,
-    author character varying,
+    author_id integer,
     publisher character varying,
     isbn character varying,
     description text,
@@ -22,7 +22,7 @@ BEGIN
     INSERT INTO public.ebooks(
         title,
         subtitle,
-        author,
+        author_id,
         publisher,
         isbn,
         description,
@@ -39,7 +39,7 @@ BEGIN
     ) VALUES (
         title,
         subtitle,
-        author,
+        author_id,
         publisher,
         isbn,
         description,

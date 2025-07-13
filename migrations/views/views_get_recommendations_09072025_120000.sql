@@ -14,7 +14,17 @@ SELECT
     -- Book details
     e.title,
     e.subtitle,
-    e.author,
+    (
+        SELECT json_agg(
+            json_build_object(
+                'id', a.id,
+                'name', a.name,
+                'bio', a.bio
+            )
+        )
+        FROM public.authors a
+        WHERE a.id = e.author_id
+    ) as author,
     e.publisher,
     e.isbn,
     e.description,

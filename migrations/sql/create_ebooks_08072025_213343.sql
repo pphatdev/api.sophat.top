@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS public.ebooks (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     title VARCHAR(255) NOT NULL,
     subtitle VARCHAR(255),
-    author VARCHAR(255) NOT NULL,
+    author_id INTEGER NOT NULL,
     publisher VARCHAR(255),
     isbn VARCHAR(20) UNIQUE,
     description TEXT,
