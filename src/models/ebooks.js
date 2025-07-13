@@ -32,7 +32,7 @@ export const getData = async (request) => {
 
     if (search && search !== "" && category !== "all") {
         searchCondition = searchCondition ? `${searchCondition} AND` : '';
-        searchCondition += ` (title ilike '%${search}%' OR subtitle ilike '%${search}%' OR author ilike '%${search}%')`;
+        searchCondition += ` (title ilike '%${search}%' OR subtitle ilike '%${search}%')`;
     }
 
     const count = await client.query(
@@ -50,14 +50,14 @@ export const getData = async (request) => {
         page: page,
         limit: limit,
         search: {
-            column: ["title", "description", "subtitle", "author"],
+            column: ["title", "description", "subtitle"],
             value: search,
             operator: "or",
             withWere: true
         },
         sort: {
             column: [
-                "updated_date","title", "subtitle"
+                "updated_date", "title", "subtitle"
             ],
             value: sort
         },
@@ -75,6 +75,75 @@ export const getData = async (request) => {
         reason => console.log(reason)
     )
 };
+
+
+export const getDataByAuthor = async (request) => {
+
+    const { page, limit, search, sort, category, authorId } = request
+
+    let searchCondition = "";
+    const cacheKey = `ebooks_list_${paramsToNameFile(request)}`;
+
+    // Try to get data from cache first
+    const cachedData = await cache.get(cacheKey)
+    if (cachedData) {
+        // console.log('Returning cached ebooks data')
+        // return cachedData
+    }
+
+    if (category && category !== "all") {
+        if (String(category).toLowerCase().includes("recommend")) {
+            searchCondition = `rating >= 4`;
+        } else {
+            searchCondition = `category ilike '%${category}%'`;
+        }
+    }
+
+    if (search && search !== "" && category !== "all") {
+        searchCondition = searchCondition ? `${searchCondition} AND` : '';
+        searchCondition += ` (title ilike '%${search}%' OR subtitle ilike '%${search}%')`;
+    }
+
+    const count = await client.query(
+        `SELECT count(id) from public.get_ebooks_by_author(${authorId}) ${searchCondition ? `WHERE  ${searchCondition}` : ''}`, []
+    )
+    const total = count.rows[0].count || 0
+
+    const query = pagination({
+        table: `public.get_ebooks_by_author(${authorId})`,
+        selectColumns: ["*"],
+        conditions: {
+            operator: 'WHERE',
+            value: searchCondition
+        },
+        page: page,
+        limit: limit,
+        search: {
+            column: ["title", "description", "subtitle"],
+            value: search,
+            operator: "or",
+            withWere: true
+        },
+        sort: {
+            column: [
+                "updated_date", "title", "subtitle"
+            ],
+            value: sort
+        },
+    })
+
+    return await client.query(query, []).then(
+        async result => {
+            const responseData = Response.success(result.rows, total)
+            // Cache the successful response
+            await cache.set(cacheKey, responseData)
+            console.log('Cached ebooks data')
+            return responseData
+        }
+    ).catch(
+        reason => console.log(reason)
+    )
+}
 
 
 export const getDataDetail = async ({ id }) => {
@@ -190,7 +259,7 @@ export const getRelatedData = async (request) => {
     const count = await client.query(
         `SELECT count(id) from public.get_related_ebooks WHERE reference_book_id = $1`, [id]
     )
-    const total = count.rows[0].count || 0 
+    const total = count.rows[0].count || 0
 
     const query = pagination({
         table: 'public.get_related_ebooks',

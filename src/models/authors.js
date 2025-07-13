@@ -166,8 +166,6 @@ export const updateData = async (request) => {
         }
     ).catch(
         reason => {
-
-            
             console.log("Update author error:", reason);
             if (reason.code === "23505") {
                 return Response.updateFailed({ message: "Author with this name already exists." });
