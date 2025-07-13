@@ -80,7 +80,7 @@ export const getDataDetail = async ({ id }) => {
     }
 
     return await client.query(
-        `SELECT * from public.authors where id=$1`, [id]
+        `SELECT * from public.get_authors where id=$1`, [id]
     ).then(
         async result => {
             const responseData = Response.detailSuccess(result.rows)
