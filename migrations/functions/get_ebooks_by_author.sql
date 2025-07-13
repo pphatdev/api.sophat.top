@@ -49,7 +49,7 @@ BEGIN
         e.file_size_mb,
         e.file_format,
         e.file_path,
-        e.cover_image_url as image,
+        concat('/api/v1/files/thumbnails/', e.cover_image_url)::VARCHAR as image,
         e.price,
         e.publication_date,
         e.rating,
