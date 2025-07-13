@@ -87,8 +87,8 @@ export const getDataByAuthor = async (request) => {
     // Try to get data from cache first
     const cachedData = await cache.get(cacheKey)
     if (cachedData) {
-        // console.log('Returning cached ebooks data')
-        // return cachedData
+        console.log('Returning cached ebooks data')
+        return cachedData
     }
 
     if (category && category !== "all") {
