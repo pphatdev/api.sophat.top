@@ -3,6 +3,15 @@ import { authenticateToken } from '../middlewares/authenticate.js'
 import { getImage, create, uploadSingle } from '../controllers/images.js'
 import { Validation } from '../helpers/validator.js'
 import ImageModel from '../models/images.js'
+import rateLimit from 'express-rate-limit'
+
+// Rate limiter: max 100 requests per 15 minutes per IP for image access
+const imageRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // limit each IP to 100 requests per windowMs
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+})
 
 export const ROUTE = Router()
 
@@ -11,7 +20,7 @@ ROUTE.get("/", Validation.base.list, async (req, res) => {
     res.send(response)
 })
 
-ROUTE.get("/:folder/:filename", getImage)
+ROUTE.get("/:folder/:filename", imageRateLimiter, getImage)
 
 ROUTE.get("/:id", Validation.base.detail, (req, res) => {
     const { id } = req.params
