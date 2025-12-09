@@ -22,7 +22,8 @@ app.use((req, res, next) => {
         /^https?:\/\/pphat\.vercel\.app$/,
         /^https?:\/\/v4-pphat\.vercel\.app$/,
         /^https?:\/\/v4-[a-z0-9]+-pphat\.vercel\.app$/,
-        /^https?:\/\/v4-[a-z0-9]+-[a-z0-9]+-pphat\.vercel\.app$/
+        /^https?:\/\/v4-[a-z0-9]+-[a-z0-9]+-pphat\.vercel\.app$/,
+	/^https?:\/\/(.*\.)?stackdev\.cloud$/
     ];
 
     const origin = req.headers.origin;
