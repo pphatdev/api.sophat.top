@@ -62,26 +62,115 @@ export const getImage = async (req, res) => {
         const rootDir = path.join(process.cwd(), `public/uploads/${folder || 'images'}`);
         const filePath = path.resolve(rootDir, filename);
 
+        // Security check for path traversal
         if (!filePath.startsWith(rootDir)) {
             return res.status(403).json({ error: 'Forbidden' });
         }
 
+        // Check if any transformation is requested
+        const hasTransformation = !!(fm || q || w || h || fit);
+
+        // Create a cache key based on the image parameters
         const cacheKey = `_file_${paramsToNameFile({...req.params, ...req.query})}`;
 
-        // Try to get from cache first
-        const cachedImage = await imageCache.getImage(cacheKey, '.png');
+        let fileExists = false;
+        let fileStats = null;
+        let originalMetadata = null;
+
+        try {
+            fileStats = await fs.stat(filePath);
+            fileExists = true;
+
+            // Get original image metadata for proper content-type detection
+            if (!hasTransformation) {
+                originalMetadata = await sharp(filePath).metadata();
+            }
+        } catch (error) {
+            fileExists = false;
+        }
+
+        // If no transformation and file exists, serve original file with proper headers
+        if (!hasTransformation && fileExists && originalMetadata) {
+            // Determine content type from metadata
+            let contentType = 'image/jpeg'; // default
+            switch (originalMetadata.format) {
+                case 'jpeg':
+                    contentType = 'image/jpeg';
+                    break;
+                case 'png':
+                    contentType = 'image/png';
+                    break;
+                case 'webp':
+                    contentType = 'image/webp';
+                    break;
+                case 'gif':
+                    contentType = 'image/gif';
+                    break;
+                case 'svg':
+                    contentType = 'image/svg+xml';
+                    break;
+                case 'tiff':
+                    contentType = 'image/tiff';
+                    break;
+                default:
+                    contentType = 'image/jpeg';
+            }
+
+            // Set proper headers for browser caching and preview
+            const etag = `"${fileStats.mtime.getTime()}-${fileStats.size}"`;
+            res.set({
+                'Content-Type': contentType,
+                'Cache-Control': 'public, max-age=31536000, immutable',
+                'ETag': etag,
+                'Last-Modified': fileStats.mtime.toUTCString(),
+                'Content-Length': fileStats.size.toString(),
+                'Connection': 'keep-alive',
+                'Date': new Date().toUTCString(),
+                'X-Content-Type-Options': 'nosniff',
+                'X-Frame-Options': 'SAMEORIGIN',
+                'X-XSS-Protection': '1; mode=block'
+            });
+
+            // Check if client has cached version
+            const ifNoneMatch = req.headers['if-none-match'];
+            const ifModifiedSince = req.headers['if-modified-since'];
+
+            if (ifNoneMatch === etag || (ifModifiedSince && new Date(ifModifiedSince) >= fileStats.mtime)) {
+                return res.status(304).end();
+            }
+
+            // Stream the original file
+            const fileStream = createReadStream(filePath);
+            return fileStream.pipe(res);
+        }
+
+        // For transformed images, check cache first
+        const outputFormat = fm || (originalMetadata?.format === 'png' ? 'png' : 'jpeg');
+        const cachedImage = await imageCache.getImage(cacheKey, `.${outputFormat}`);
         if (cachedImage) {
-            res.set('Content-Type', 'image/png');
+            const contentType = outputFormat === 'png' ? 'image/png' : 
+                             outputFormat === 'webp' ? 'image/webp' : 'image/jpeg';
+            res.set({
+                'Content-Type': contentType,
+                'Cache-Control': 'public, max-age=31536000, immutable',
+                'X-Content-Type-Options': 'nosniff',
+                'X-Frame-Options': 'SAMEORIGIN',
+                'X-XSS-Protection': '1; mode=block',
+                'Connection': 'keep-alive',
+                'Date': new Date().toUTCString(),
+                'ETag': `"${Date.now()}-${cachedImage.length}"`,
+                'Last-Modified': new Date().toUTCString(),
+                'Content-Length': cachedImage.length.toString()
+            });
             return res.send(cachedImage);
         }
 
         let transform = sharp();
-        let fileStream;
+        let fileStream = null;
 
-        try {
-            await fs.access(filePath);
+        if (fileExists) {
             fileStream = createReadStream(filePath);
-        } catch (error) {
+        } else {
             // Generate placeholder if file not found
             const width = w ? parseInt(w) : 300;
             const height = h ? parseInt(h) : width;
@@ -101,6 +190,7 @@ export const getImage = async (req, res) => {
                 }]);
         }
 
+        // Apply transformations
         if (w || h) {
             transform = transform.resize({
                 width: w ? parseInt(w) : undefined,
@@ -109,12 +199,18 @@ export const getImage = async (req, res) => {
             });
         }
 
+        // Set output format and quality
         if (fm) {
-            transform = transform.toFormat(fm, {
-                quality: q ? parseInt(q) : 60
-            });
+            const quality = q ? parseInt(q) : (fm === 'jpeg' ? 85 : 80);
+            transform = transform.toFormat(fm, { quality });
         } else {
-            transform = transform.png();
+            // Use original format if no transformation, otherwise default to appropriate format
+            const quality = q ? parseInt(q) : 85;
+            if (originalMetadata?.format === 'png') {
+                transform = transform.png({ quality });
+            } else {
+                transform = transform.jpeg({ quality });
+            }
         }
 
         // Create a buffer from the transformed image
@@ -126,14 +222,44 @@ export const getImage = async (req, res) => {
         }
 
         // Cache the transformed image
-        await imageCache.saveImage(cacheKey, imageBuffer, '.png');
+        await imageCache.saveImage(cacheKey, imageBuffer, `.${outputFormat}`);
 
-        // Send the response
-        res.set('Content-Type', 'image/png');
+        // Set response headers
+        const contentType = outputFormat === 'png' ? 'image/png' : outputFormat === 'webp' ? 'image/webp' : 'image/jpeg';
+        res.set({
+            'Content-Type': contentType,
+            'Cache-Control': 'public, max-age=31536000, immutable',
+            'X-Content-Type-Options': 'nosniff',
+            'X-Frame-Options': 'SAMEORIGIN',
+            'X-XSS-Protection': '1; mode=block',
+            'Connection': 'keep-alive',
+            'Date': new Date().toUTCString(),
+            'ETag': `"${Date.now()}-${imageBuffer.length}"`,
+            'Last-Modified': new Date().toUTCString(),
+            'Content-Length': imageBuffer.length.toString()
+        });
+
         res.send(imageBuffer);
 
     } catch (error) {
         console.error('Image processing error:', error);
+
+        // For image requests, serve a placeholder instead of JSON error
+        if (req.headers.accept && req.headers.accept.includes('image/')) {
+            const width = 300;
+            const height = 300;
+            const placeholderSvg = notFoundImage({ width, height });
+
+            res.set({
+                'Content-Type': 'image/svg+xml',
+                'Cache-Control': 'no-cache',
+                'X-Content-Type-Options': 'nosniff',
+                'X-Frame-Options': 'SAMEORIGIN',
+                'X-XSS-Protection': '1; mode=block'
+            });
+            return res.send(placeholderSvg);
+        }
+
         res.status(500).json({ error: error.message });
     }
 }
